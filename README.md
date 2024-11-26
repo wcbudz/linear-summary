@@ -10,4 +10,4 @@ This steamlit app will use an LLM to produce a summary of Linear issues that mee
 LINEAR_API_KEY = "linear_api_keu"
 ANTHROPIC_API_KEY = "anthropic_api_key"
 ```
-3. `streamlit run linear-summary.py`
+3. `streamlit run linear_summary.py`
