@@ -168,19 +168,77 @@ Please format the summary in clear, business-appropriate language suitable for e
         
         return message.content
 
-def main():
-    st.set_page_config(page_title="Linear Executive Summary Generator", layout="wide")
+def initialize_session_state():
+    if 'api_keys_submitted' not in st.session_state:
+        st.session_state.api_keys_submitted = False
+    if 'linear_api_key' not in st.session_state:
+        st.session_state.linear_api_key = None
+    if 'anthropic_api_key' not in st.session_state:
+        st.session_state.anthropic_api_key = None
+
+def validate_api_keys(linear_key, anthropic_key):
+    try:
+        # Test Linear API key
+        test_client = Client(
+            transport=RequestsHTTPTransport(
+                url='https://api.linear.app/graphql',
+                headers={'Authorization': linear_key}
+            )
+        )
+        test_query = gql("""
+            query { viewer { id } }
+        """)
+        test_client.execute(test_query)
+        
+        # Test Anthropic API key
+        test_anthropic = Anthropic(api_key=anthropic_key)
+        test_anthropic.messages.create(
+            model="claude-3-sonnet-20240229",
+            max_tokens=10,
+            messages=[{"role": "user", "content": "test"}]
+        )
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+def api_key_form():
     st.title("Linear Executive Summary Generator")
+    
+    with st.form("api_key_form"):
+        st.write("Please enter your API keys to continue:")
+        
+        linear_key = st.text_input("Linear API Key", type="password")
+        anthropic_key = st.text_input("Anthropic API Key", type="password")
+        
+        submitted = st.form_submit_button("Submit")
+        
+        if submitted:
+            if linear_key and anthropic_key:
+                success, error = validate_api_keys(linear_key, anthropic_key)
+                if success:
+                    st.session_state.linear_api_key = linear_key
+                    st.session_state.anthropic_api_key = anthropic_key
+                    st.session_state.api_keys_submitted = True
+                    st.rerun()
+                else:
+                    st.error(f"Error validating API keys: {error}")
+            else:
+                st.error("Please provide both API keys.")
 
-    # Get API keys from environment variables or Streamlit secrets
-    linear_api_key = os.environ.get('LINEAR_API_KEY') or st.secrets.get('LINEAR_API_KEY')
-    anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY') or st.secrets.get('ANTHROPIC_API_KEY')
+def main_app():
+    summarizer = LinearExecutiveSummary(
+        st.session_state.linear_api_key,
+        st.session_state.anthropic_api_key
+    )
+    
+    # Add a way to reset API keys if needed
+    if st.sidebar.button("Reset API Keys"):
+        st.session_state.api_keys_submitted = False
+        st.session_state.linear_api_key = None
+        st.session_state.anthropic_api_key = None
+        st.rerun()
 
-    if not linear_api_key or not anthropic_api_key:
-        st.error("Please set LINEAR_API_KEY and ANTHROPIC_API_KEY in environment variables or Streamlit secrets.")
-        return
-
-    summarizer = LinearExecutiveSummary(linear_api_key, anthropic_api_key)
+    st.title("Linear Executive Summary Generator")
 
     # Team selector
     st.subheader("Select Team")
@@ -293,6 +351,14 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
                 st.error("Full error details:", exc_info=True)
+
+def main():
+    initialize_session_state()
+    
+    if not st.session_state.api_keys_submitted:
+        api_key_form()
+    else:
+        main_app()
 
 if __name__ == "__main__":
     main()
