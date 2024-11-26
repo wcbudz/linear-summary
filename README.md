@@ -5,9 +5,6 @@ This steamlit app will use an LLM to produce a summary of Linear issues that mee
 ## Installation
 
 1. `pip install -r /path/to/requirements.txt`
-2. Set your environment variables or create a .streamlit/secrets.toml file with your API keys:
-```toml
-LINEAR_API_KEY = "linear_api_keu"
-ANTHROPIC_API_KEY = "anthropic_api_key"
-```
-3. `streamlit run linear_summary.py`
+2. `streamlit run linear_summary.py`
+
+The initial screen after running the application will require you to input your API keys for Linear and Anthropic
