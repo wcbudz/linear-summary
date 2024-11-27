@@ -52,18 +52,18 @@ class LinearExecutiveSummary:
         result = self.linear_client.execute(query)
         return result['users']['nodes']
 
-    def get_filtered_issues(self, team_id, completed_before=None, completed_after=None, status_ids=None, assignee_ids=None):
+    def get_filtered_issues(self, team_id, updated_before=None, updated_after=None, status_ids=None, assignee_ids=None):
         filters = [f'team: {{ id: {{ eq: "{team_id}" }} }}']
         
-        # Handle completed date filters
-        if completed_before or completed_after:
-            completed_conditions = []
-            if completed_before:
-                completed_conditions.append(f'lte: "{completed_before.isoformat()}"')
-            if completed_after:
-                completed_conditions.append(f'gte: "{completed_after.isoformat()}"')
+        # Handle updated date filters
+        if updated_before or updated_after:
+            updated_conditions = []
+            if updated_before:
+                updated_conditions.append(f'lte: "{updated_before.isoformat()}"')
+            if updated_after:
+                updated_conditions.append(f'gte: "{updated_after.isoformat()}"')
             
-            filters.append(f'completedAt: {{ {", ".join(completed_conditions)} }}')
+            filters.append(f'updatedAt: {{ {", ".join(updated_conditions)} }}')
         
         if status_ids:
             status_filter = ', '.join([f'"{id}"' for id in status_ids])
@@ -88,7 +88,7 @@ class LinearExecutiveSummary:
                 type
               }}
               priority
-              completedAt
+              updatedAt
               description
               assignee {{
                 name
@@ -125,14 +125,14 @@ class LinearExecutiveSummary:
             
             labels = ", ".join([label['name'] for label in issue['labels']['nodes']])
             assignee = issue['assignee']['name'] if issue['assignee'] else "Unassigned"
-            completed_date = issue.get('completedAt', 'Not completed')
+            updated_date = issue.get('updatedAt', 'No update date')
             
             issues_text += f"""
 Issue: {issue['identifier']} - {issue['title']}
 Assignee: {assignee}
 Status: {issue['state']['name']}
 Priority: {issue['priority']}
-Completed: {completed_date}
+Last Updated: {updated_date}
 Labels: {labels}
 Description: {issue['description']}
 Status Changes:
@@ -260,24 +260,24 @@ def main_app():
     selected_team_data = next((team for team in teams if team['id'] == selected_team_id), None)
 
     # Date filters
-    st.subheader("Completion Date Filters")
+    st.subheader("Updated Date Filters")
     col1, col2 = st.columns(2)
     
     with col1:
-        use_after_date = st.checkbox("Filter by Completed After")
-        completed_after = None
+        use_after_date = st.checkbox("Filter by Updated After")
+        updated_after = None
         if use_after_date:
-            completed_after = st.date_input(
-                "Completed After",
+            updated_after = st.date_input(
+                "Updated After",
                 value=datetime.now() - timedelta(days=30)
             )
 
     with col2:
-        use_before_date = st.checkbox("Filter by Completed Before")
-        completed_before = None
+        use_before_date = st.checkbox("Filter by Updated Before")
+        updated_before = None
         if use_before_date:
-            completed_before = st.date_input(
-                "Completed Before",
+            updated_before = st.date_input(
+                "Updated Before",
                 value=datetime.now()
             )
 
@@ -307,13 +307,13 @@ def main_app():
         with st.spinner("Fetching issues and generating summary..."):
             try:
                 # Convert dates to datetime with time components
-                completed_before_dt = datetime.combine(completed_before, datetime.max.time()) if completed_before else None
-                completed_after_dt = datetime.combine(completed_after, datetime.min.time()) if completed_after else None
+                updated_before_dt = datetime.combine(updated_before, datetime.max.time()) if updated_before else None
+                updated_after_dt = datetime.combine(updated_after, datetime.min.time()) if updated_after else None
                 
                 issues = summarizer.get_filtered_issues(
                     team_id=selected_team_id,
-                    completed_before=completed_before_dt,
-                    completed_after=completed_after_dt,
+                    updated_before=updated_before_dt,
+                    updated_after=updated_after_dt,
                     status_ids=selected_status_ids if selected_status_ids else None,
                     assignee_ids=selected_member_ids if selected_member_ids else None
                 )
